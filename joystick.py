@@ -116,17 +116,22 @@ K_i=0
 K_d=0
 K_a=0
 error_I=0
+error_prev=0
 
+## 스티어링 제어 함수
 def steering_control(reference,K_p,K_i,K_d,K_a):
-    global error_I
+    global error_I, error_prev
+        
     error_feedback = reference
     error_P = error_feedback
     error_I += error_feedback
-    input_pid = K_p*error_P + K_i*error_I
+    error_D = error_feedback-error_prev
+    input_pid = K_p*error_P + K_i*error_I +K_d*error_D
 
     input_windup = max(-1,min(1,input_pid))
     error_windup = input_pid - input_windup
-    error_I -= K_a *error_windup
+    error_I -= K_a * error_windup
+    error_prev=error_feedback
     return input_windup
 
 while running:
