@@ -107,6 +107,7 @@ collecting = False
 cnt = 0
 gain_Tuning = False
 gain_number = 0
+gain_name = "Kp"
 
 ## 제어 파라미터
 th_control=0.45
@@ -158,12 +159,24 @@ while running:
                 steering_input = steering_control(reference,K_p,K_i,K_d,K_a)
                 car.steering = steering_input
                 
-                if gain_Tuning:
-                    car.throttle = 0
-                    print("Tuning mode, gain_num: {} K_p: {}, K_i: {} K_d: {} K_a: {} y_error: {} ".format(gain_number, K_p, K_i,K_d,K_a,reference))
+
+                # 모니터링
+                if gain_number==0:
+                    gain_name="Kp"
+                elif gain_number==1:
+                    gain_name="Ki"
+                elif gain_number==2:
+                    gain_name="Kd"
                 else:
+                    gain_name="Ka"
+                
+                if gain_Tuning: #튜닝 모드로 작동
+                    car.throttle = 0
+                    print("Tuning mode, gain_num: {} K_p: {}, K_i: {} K_d: {} K_a: {} x_error: {} y_axis: {} ".format(gain_name, K_p, K_i,K_d,K_a,reference,y))
+                else: # 드라이빙 모드로 작동
                     car.throttle = th_control
-                    print("Driving mode, thro: {:2f} steer input: {} K_p: {} x: {} ".format(th_control, steering_input,K_p,reference))
+                    print("Driving mode, thro: {:2f} steer input: {} K_p: {} x_error: {} y_axis: {} ".format(th_control, steering_input,K_p,reference,y))
+                
                 # # 기존 제어 로직
                 # car.throttle=th_control
                 # error_feedback = x-640
@@ -183,7 +196,9 @@ while running:
                 #print(x, y,"Steering input: {}".format(steering_input()))
 
     #조이스틱으로 조작
-    else: 
+    else:
+        error_I=0 # pid 제어에서 사용한 에러 누적값 초기화
+        error_prev=0 
         throttle = -joystick.get_axis(1)
         throttle = max(throttle_range[0], min(throttle_range[1], throttle))
         car.throttle = throttle
@@ -202,7 +217,7 @@ while running:
         flag_4_1=flag_4_2=False #4번 버튼 초기화    
     flag_7_2=flag_7_1 
 
-    if gain_Tuning:
+    if gain_Tuning: # 튜닝 모드 조작
         # 튜닝할 게인 번호 조정: 0은 K_p, 1은 K_i, 2는 K_d, 3은 K_a
         # 게인 번호 증가
         flag_1_1 = joystick.get_button(1)
@@ -274,7 +289,7 @@ while running:
                 K_a = max(0,K_a)
             flag_0_2=flag_0_1
 
-    else:
+    else: #드라이빙 모드 조작
         #녹화버튼 설정
         if joystick.get_button(1) and not flag_1_1:
             collecting = not collecting
