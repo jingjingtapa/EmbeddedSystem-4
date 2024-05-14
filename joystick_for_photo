@@ -106,7 +106,6 @@ flag_7_2=False
 #automode = False
 automode=True
 collecting = False
-collecting_2 = False
 cnt = 0
 gain_Tuning = False
 gain_number = 0
@@ -145,9 +144,6 @@ while running:
     #자율 주행 모드
     if automode:
         ret, frame = cam.cap[0].read()
-        # throttle = 0.4
-        # throttle = max(throttle_range[0], min(throttle_range[1], throttle))
-        # car.throttle = throttle
         if ret:
             pil_image = Image.fromarray(cv2.cvtColor(frame,cv2.COLOR_BGR2RGB))
             width, height = pil_image.size
@@ -182,24 +178,6 @@ while running:
                     car.throttle = 0
                     #car.throttle = th_control
                     print("Driving mode, thro: {:2f} steer input: {} K_p: {} x_error: {} y_axis: {} ".format(th_control, steering_input,K_p,reference,y))
-                
-                # # 기존 제어 로직
-                # car.throttle=th_control
-                # error_feedback = x-640
-                # if error_feedback > deadzone:
-                #     car.steering = 0.7
-                #     #car.throttle=0.35
-                #     print("Car is on left side")
-                # elif error_feedback < -deadzone:
-                #     car.steering = -1
-                #     #car.throttle=0.32
-                #     print("Car is on right side")
-                # else:
-                #     car.steering = -0.3
-                #     #car.throttle=0.32
-                #     print("Car is on center line")
-
-                #print(x, y,"Steering input: {}".format(steering_input()))
 
     #조이스틱으로 조작
     else:
@@ -211,7 +189,6 @@ while running:
         steering = joystick.get_axis(2)
         car.steering = steering
         print("thro: {:2f} steer input: {} ".format(throttle, steering))
-    #print("thro: {:2f} steer: {:2f} th_gain: {:2f} deadzone: {} ".format(throttle, car.steering_gain*steering,car.throttle_gain,deadzone))
     
     
     if joystick.get_button(11): # start button
@@ -223,116 +200,44 @@ while running:
         flag_4_1=flag_4_2=False #4번 버튼 초기화    
     flag_7_2=flag_7_1 
 
-    if gain_Tuning: # 튜닝 모드 조작
-        # 튜닝할 게인 번호 조정: 0은 K_p, 1은 K_i, 2는 K_d, 3은 K_a
-        # 게인 번호 증가
-        flag_1_1 = joystick.get_button(1)
-        if flag_1_1 and not flag_1_2:
-            gain_number= (gain_number+1)%4
-        flag_1_2=flag_1_1
 
-        flag_3_1 = joystick.get_button(3)
-        if flag_3_1 and not flag_3_2:
-            gain_number= (gain_number-1)%4
-        flag_3_2=flag_3_1
+    #녹화버튼 설정
+    if joystick.get_button(1) and not flag_1_1:
+        collecting = not collecting
+        flag_1_1 = True
+        if collecting:
+            print("Starting image Collection...")
+        else:
+            print("Stopping image Collection...")
+            
+    elif not joystick.get_button(1) and flag_1_1:
+        flag_1_1 = False
 
-        if gain_number==0:
-            # K_p 증가
-            flag_4_1 = joystick.get_button(4)
-            if flag_4_1 and not flag_4_2:
-                K_p += 0.001
-                K_p = min(10,K_p)
-            flag_4_2=flag_4_1   
-
-            # K_p 감소
-            flag_0_1 = joystick.get_button(0)
-            if flag_0_1 and not flag_0_2:
-                K_p -= 0.001
-                K_p = max(0,K_p)
-            flag_0_2=flag_0_1
-
-        elif gain_number==1:
-            # K_i 증가
-            flag_4_1 = joystick.get_button(4)
-            if flag_4_1 and not flag_4_2:
-                K_i += 0.0001
-                K_i = min(10,K_i)
-            flag_4_2=flag_4_1   
-
-            # K_i 감소
-            flag_0_1 = joystick.get_button(0)
-            if flag_0_1 and not flag_0_2:
-                K_i -= 0.0001
-                K_i = max(0,K_i)
-            flag_0_2=flag_0_1
-
-        elif gain_number==2:
-            # K_d 증가
-            flag_4_1 = joystick.get_button(4)
-            if flag_4_1 and not flag_4_2:
-                K_d += 0.001
-                K_d = min(10,K_d)
-            flag_4_2=flag_4_1   
-
-            # K_d 감소
-            flag_0_1 = joystick.get_button(0)
-            if flag_0_1 and not flag_0_2:
-                K_d -= 0.001
-                K_d = max(0,K_d)
-            flag_0_2=flag_0_1
-        else: # gain_number==3
-            # K_a 증가
-            flag_4_1 = joystick.get_button(4)
-            if flag_4_1 and not flag_4_2:
-                K_a += 0.001
-                K_a = min(10,K_a)
-            flag_4_2=flag_4_1   
-
-            # K_a 감소
-            flag_0_1 = joystick.get_button(0)
-            if flag_0_1 and not flag_0_2:
-                K_a -= 0.001
-                K_a = max(0,K_a)
-            flag_0_2=flag_0_1
-
-    else: #드라이빙 모드 조작
-        #녹화버튼 설정
-        if joystick.get_button(1) and not flag_1_1:
-            collecting = not collecting
-            flag_1_1 = True
-            if collecting:
-                print("Starting image Collection...")
-            else:
-                print("Stopping image Collection...")
-                
-        elif not joystick.get_button(1) and flag_1_1:
-            flag_1_1 = False
-
-        # 자율주행 모드 시 throttle 증가
-        flag_4_1 = joystick.get_button(4)
-        if flag_4_1 and not flag_4_2:
-            th_control += 0.01
-            th_control = min(0.7,th_control)
-        flag_4_2=flag_4_1   
-
-        # 자율주행 모드 시 throttle 감소
-        flag_0_1 = joystick.get_button(0)
-        if flag_0_1 and not flag_0_2:
-            th_control -= 0.01
-            th_control = max(0,th_control)
-        flag_0_2=flag_0_1
-
-    # # Throttle Gain 증가
+    # # 자율주행 모드 시 throttle 증가
     # flag_4_1 = joystick.get_button(4)
     # if flag_4_1 and not flag_4_2:
-    #     car.throttle_gain += 0.02
+    #     th_control += 0.01
+    #     th_control = min(0.7,th_control)
     # flag_4_2=flag_4_1   
 
-    # # Throttle Gain 감소
+    # # 자율주행 모드 시 throttle 감소
     # flag_0_1 = joystick.get_button(0)
     # if flag_0_1 and not flag_0_2:
-    #     car.throttle_gain -= 0.02
+    #     th_control -= 0.01
+    #     th_control = max(0,th_control)
     # flag_0_2=flag_0_1
+
+    # Throttle Gain 증가
+    flag_4_1 = joystick.get_button(4)
+    if flag_4_1 and not flag_4_2:
+        car.throttle_gain += 0.02
+    flag_4_2=flag_4_1   
+
+    # Throttle Gain 감소
+    flag_0_1 = joystick.get_button(0)
+    if flag_0_1 and not flag_0_2:
+        car.throttle_gain -= 0.02
+    flag_0_2=flag_0_1
 
     # # Deadzone 증가
     # flag_4_1 = joystick.get_button(4)
@@ -382,7 +287,7 @@ while running:
     #사진 수집이 활성화된 경우
     cam_save_path = Path(cam.save_path)
     parent_folder = cam_save_path.name
-    if collecting and not collecting_2:
+    if collecting:
         ret, frame = cam.cap[0].read()
         if ret:
             timestamp = datetime.datetime.now().strftime('%Y%m%d')
@@ -392,7 +297,21 @@ while running:
             print(f"Saved frame at {timestamp}")
         else:
             print("Failed to capture frame")
-    collecting_2=collecting
+
+    # 한 프레임 촬영버튼 설정
+    flag_3_1 = joystick.get_button(3)
+    if (flag_3_1 and not flag_3_2) and not collecting:
+        ret, frame = cam.cap[0].read()
+        if ret:
+            timestamp = datetime.datetime.now().strftime('%Y%m%d')
+            frame_path = cam.save_path / f"{parent_folder}_{cnt}.jpg"
+            cnt += 1
+            cv2.imwrite(str(frame_path), frame)  # 이미지 저장
+            print(f"Saved frame at {timestamp}")
+        else:
+            print("Failed to capture frame")
+    flag_3_2 = flag_3_1
+         
     
     # 자율주행
     if joystick.get_button(6) and not flag_6_1:
