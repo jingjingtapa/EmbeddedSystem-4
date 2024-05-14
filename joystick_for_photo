@@ -104,8 +104,9 @@ flag_7_1=False
 flag_7_2=False
 
 #automode = False
-automode=True
+automode=False
 collecting = False
+collecting_2 = False
 cnt = 0
 gain_Tuning = False
 gain_number = 0
@@ -203,13 +204,16 @@ while running:
 
     #녹화버튼 설정
     if joystick.get_button(1) and not flag_1_1:
+        # 이미지 수집 플래그를 토글합니다.
         collecting = not collecting
         flag_1_1 = True
         if collecting:
             print("Starting image Collection...")
+            # 한 번만 사진을 찍도록 collecting_2 플래그를 설정합니다.
+            collecting_2 = True
         else:
             print("Stopping image Collection...")
-            
+
     elif not joystick.get_button(1) and flag_1_1:
         flag_1_1 = False
 
@@ -287,7 +291,7 @@ while running:
     #사진 수집이 활성화된 경우
     cam_save_path = Path(cam.save_path)
     parent_folder = cam_save_path.name
-    if collecting:
+    if collecting and collecting_2:
         ret, frame = cam.cap[0].read()
         if ret:
             timestamp = datetime.datetime.now().strftime('%Y%m%d')
@@ -295,12 +299,19 @@ while running:
             cnt += 1
             cv2.imwrite(str(frame_path), frame)  # 이미지 저장
             print(f"Saved frame at {timestamp}")
-        else:
-            print("Failed to capture frame")
+            # 사진을 한 번 찍었으므로 collecting_2 플래그를 비활성화합니다.
+            collecting_2 = False
+    # else:
+    #     print("Waiting to do capture frame")
 
     # 한 프레임 촬영버튼 설정
+    cam_save_path = Path(cam.save_path)
+    parent_folder = cam_save_path.name
     flag_3_1 = joystick.get_button(3)
     if (flag_3_1 and not flag_3_2) and not collecting:
+        # 카메라를 재시작하여 최신 프레임을 가져옵니다.
+        cam.cap[0].release()
+        cam.cap[0] = cv2.VideoCapture(gstreamer_pipeline, cv2.CAP_GSTREAMER)
         ret, frame = cam.cap[0].read()
         if ret:
             timestamp = datetime.datetime.now().strftime('%Y%m%d')
