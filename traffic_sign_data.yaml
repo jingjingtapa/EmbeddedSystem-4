@@ -1,0 +1,10 @@
+names:
+- bus
+- crosswalk
+- left
+- right
+- straight
+nc: 5
+test: /content/drive/MyDrive/group4/traffic_sign_data/test/images/
+train: /content/drive/MyDrive/group4/traffic_sign_data/train/images/
+val: /content/drive/MyDrive/group4/traffic_sign_data/valid/images/
