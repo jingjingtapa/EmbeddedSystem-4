@@ -12,6 +12,7 @@ import torchvision
 from torchvision import models
 from PIL import Image
 from cnn.center_dataset import TEST_TRANSFORMS
+import matplotlib.pyplot as plt
 
 sys.path.append('/home/ircv6/HYU-2024-Embedded/week07/Camera')
 import camera
@@ -59,7 +60,7 @@ gstreamer_pipeline = (
 
 model = models.alexnet(num_classes=2, dropout=0.0)
 device = torch.device('cuda')
-model.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_taewook.pth'))
+model.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_straight.pth'))
 model = model.to(device)
 
 save_path = str('record')
@@ -110,11 +111,11 @@ gain_number = 0
 gain_name = "Kp"
 
 ## 제어 파라미터
-th_control=0.45
+th_control=0.37
 deadzone=10
-K_p=0.007
+K_p=0.003
 K_i=0
-K_d=0
+K_d=0.001
 K_a=0
 error_I=0
 error_prev=0
@@ -134,6 +135,8 @@ def steering_control(reference,K_p,K_i,K_d,K_a):
     error_I -= K_a * error_windup
     error_prev=error_feedback
     return input_windup
+
+
 
 while running:
     pygame.event.pump()
@@ -204,8 +207,9 @@ while running:
         car.throttle = throttle
         steering = joystick.get_axis(2)
         car.steering = steering
-        print("thro: {:2f} steer input: {} ".format(throttle, steering))
-    #print("thro: {:2f} steer: {:2f} th_gain: {:2f} deadzone: {} ".format(throttle, car.steering_gain*steering,car.throttle_gain,deadzone))
+        # print("thro: {:2f} steer input: {} ".format(throttle, steering))
+    
+    print("thro: {:2f} steer: {:2f} th_gain: {:2f} deadzone: {} ".format(throttle, car.steering_gain*steering,car.throttle_gain,deadzone))
     
     
     if joystick.get_button(11): # start button
@@ -249,14 +253,14 @@ while running:
             # K_i 증가
             flag_4_1 = joystick.get_button(4)
             if flag_4_1 and not flag_4_2:
-                K_i += 0.001
+                K_i += 0.0001
                 K_i = min(10,K_i)
             flag_4_2=flag_4_1   
 
             # K_i 감소
             flag_0_1 = joystick.get_button(0)
             if flag_0_1 and not flag_0_2:
-                K_i -= 0.001
+                K_i -= 0.0001
                 K_i = max(0,K_i)
             flag_0_2=flag_0_1
 
@@ -314,7 +318,7 @@ while running:
         if flag_0_1 and not flag_0_2:
             th_control -= 0.01
             th_control = max(0,th_control)
-
+        flag_0_2=flag_0_1
 
     # # Throttle Gain 증가
     # flag_4_1 = joystick.get_button(4)
@@ -386,7 +390,7 @@ while running:
             print(f"Saved frame at {timestamp}")
         else:
             print("Failed to capture frame")
-
+    
     # 자율주행
     if joystick.get_button(6) and not flag_6_1:
         automode = not automode
