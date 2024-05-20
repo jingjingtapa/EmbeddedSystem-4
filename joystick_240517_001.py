@@ -31,18 +31,18 @@ cam = camera.Camera(
 ########## 차량 연결 ################
 car = NvidiaRacecar()
 
-########## 기계학습 모델 로딩 부 #############
+########## 기계학습 모델 로딩 #############
 device = torch.device('cuda')
 model_straight = models.alexnet(num_classes=2, dropout=0.0)
-model_straight.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_straight_320_v1.pth'))
+model_straight.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_370.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_370.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_straight_320_v1.pth'))
 model_straight = model_straight.to(device)
 
 model_left = models.alexnet(num_classes = 2, dropout = 0.0)
-model_left.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_v1.pth'))
+model_left.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_370.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_v1.pth'))
 model_left = model_left.to(device)
 
 model_right = models.alexnet(num_classes = 2, dropout = 0.0)
-model_right.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_right_320_v1.pth'))
+model_right.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_370.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_right_320_v1.pth'))
 model_right = model_right.to(device)
 
 #처음 시작 시, 직진 모델 적용
@@ -59,7 +59,7 @@ os.environ["SDL_VIDEODRIVER"] = "dummy"
 pygame.init()
 pygame.joystick.init()
 
-car.throttle_gain = 0.4
+car.throttle_gain = 0.37
 car.steering_gain = -1
 
 joystick = pygame.joystick.Joystick(0)
@@ -94,7 +94,7 @@ gain_number = 0
 gain_name = "Kp"
 
 ## 제어 파라미터
-th_control=0.37
+th_control=0.4
 steering_input=0
 deadzone=10
 K_p=0.003
@@ -140,7 +140,7 @@ def draw_boxes(image, label, x1,y1,x2,y2):
 
 label,x1,y1,x2,y2 = 0,0,0,0,0
 while running:
-    # start_time = time.time()
+    start_time = time.time()
     pygame.event.pump()
     ################ 자율 주행 모드 ###############
     if automode:
@@ -164,7 +164,7 @@ while running:
                 reference = x - 480
                 steering_input = steering_control(reference,K_p,K_i,K_d,K_a)
                 car.steering = steering_input 
-
+                print("throttle: {}".format(th_control))
                 # #print("Steering_change")
                 # if gain_Tuning: #튜닝 모드로 작동
                 #     car.throttle = 0
@@ -176,13 +176,19 @@ while running:
 
                 #버스 플래그
                 if bus == True and bus_cnt < bus_time:
-                    car.throttle = th_control - 0.05
+                    if abs(steering_input)>=0.7:
+                        car.throttle = th_control-0.03
+                    else:
+                        car.throttle = th_control - 0.035
                 #횡단보도 플래그
                 elif cross == True and cross_cnt < cross_time:
                     car.throttle = 0
                 #정상 주행
                 elif bus == False and cross == False:
-                    car.throttle = th_control
+                    if abs(steering_input)>=0.7:
+                        car.throttle = th_control+0.01
+                    else:
+                        car.throttle = th_control   
                 
                 if sampling==10:
                     sampling=0
@@ -394,6 +400,9 @@ while running:
             th_control -= 0.01
             th_control = max(0,th_control)
         flag_0_2=flag_0_1
+    
+    end_time = time.time() 
+    compute_time = end_time - start_time
 
     # 사진 수집 버튼 인식
     cam_save_path = Path(cam.save_path)
@@ -404,18 +413,23 @@ while running:
             timestamp = datetime.datetime.now().strftime('%Y%m%d')
             frame_path = cam.save_path / f"{parent_folder}_{cnt}.jpg"
             cnt += 1
-            #중앙선 예측 위치 점 찍기
-            cv2.circle(frame, (int(x),int(y)),10,(255,0,0),-1)
-            #사용중인 모델 이름 남기기
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 0.5
-            font_color = (0,255,0)
-            thickness = 2
-            line_type = cv2.LINE_8
-            text_position = (50,50)
-            text = f"Model : {model_num}, No Bus Sign : {n_bus_cnt}, No Crosswalk Sign : {n_cross_cnt}"
-            cv2.putText(frame, text, text_position, font, font_scale, font_color, thickness, line_type)
-            draw_boxes(frame, label, x1, y1, x2, y2)
+            # # #중앙선 예측 위치 점 찍기
+            # cv2.circle(frame, (int(x),int(y)),10,(255,0,0),-1)
+            # # #사용중인 모델 이름 남기기
+            # font = cv2.FONT_HERSHEY_SIMPLEX
+            # font_scale = 0.5
+            # font_color = (0,255,0)
+            # thickness = 2
+            # line_type = cv2.LINE_8
+            # text_position = (50,50)
+            # # # 모델 변경 확인용 텍스트
+            # text = f"Model : {model_num}, No Bus Sign : {n_bus_cnt}, No Crosswalk Sign : {n_cross_cnt}"
+            # # # 연산시간 확인용 텍스트
+            # # if automode == True: aut = "On"
+            # # else: aut = "Off"
+            # # text = str(f"Computing time:{compute_time*1000 :.3f} ms, Automode :{aut}")
+            # cv2.putText(frame, text, text_position, font, font_scale, font_color, thickness, line_type)
+            # draw_boxes(frame, label, x1, y1, x2, y2)
             cv2.imwrite(str(frame_path), frame)  # 이미지 저장
             print(f"Saved frame at {timestamp}")
         else:
@@ -432,8 +446,7 @@ while running:
     elif not joystick.get_button(6) and flag_6_1:
         flag_6_1 = False
     
-    # end_time = time.time()  # 루프 끝 시간 기록
-    # loop_duration = end_time - start_time
+    
 
     #if not gain_Tuning:
         #print(f"Loop duration: {loop_duration:.4f} seconds, steering input: {steering_input:.4f}, x: {x},y: {y}")
