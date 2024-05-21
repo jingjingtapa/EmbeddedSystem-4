@@ -34,21 +34,21 @@ car = NvidiaRacecar()
 ########## 기계학습 모델 로딩 #############
 device = torch.device('cuda')
 model_straight = models.alexnet(num_classes=2, dropout=0.0)
-model_straight.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_370.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_370.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_straight_320_v1.pth'))
+model_straight.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_straight_370_v4.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_370.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_straight_320_v1.pth'))
 model_straight = model_straight.to(device)
 
 model_left = models.alexnet(num_classes = 2, dropout = 0.0)
-model_left.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_370.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_v1.pth'))
+model_left.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_370_v4.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_v1.pth'))
 model_left = model_left.to(device)
 
 model_right = models.alexnet(num_classes = 2, dropout = 0.0)
-model_right.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_left_370.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_right_320_v1.pth'))
+model_right.load_state_dict(torch.load('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_right_370_v4.pth')) #('/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_right_320_v1.pth'))
 model_right = model_right.to(device)
 
 #처음 시작 시, 직진 모델 적용
 model = model_straight
 
-model_yolo = YOLO("240515_002.pt", task='detect').to(device)
+model_yolo = YOLO("240521_001.pt", task='detect',verbose = False).to(device)
 classes = model_yolo.names
 
 ########### 저장 경로 설정 #################
@@ -95,9 +95,10 @@ gain_name = "Kp"
 
 ## 제어 파라미터
 th_control=0.4
+throttle_txt=th_control
 steering_input=0
 deadzone=10
-K_p=0.003
+K_p=0.0025
 K_i=0
 K_d=0.001
 K_a=0
@@ -114,19 +115,17 @@ def steering_control(reference,K_p,K_i,K_d,K_a):
     error_D = error_feedback-error_prev
     input_pid = K_p*error_P + K_i*error_I +K_d*error_D
 
-    input_windup = max(-1,min(1,input_pid))
+    input_windup = max(-1,min(0.9,input_pid))
     error_windup = input_pid - input_windup
     error_I -= K_a * error_windup
     error_prev=error_feedback
     return input_windup
 
-#previous_frame=None
-x, y = 0, 0
-sampling=0
-
-bus, bus_cnt, n_bus_cnt, bus_time, n_bus_time = False, 0, 5000, 50, 200
+x, y, sampling, box_size_criterion, box_size_max_criterion = 0,0,0,5000, 20000
+bus, bus_cnt, n_bus_cnt, bus_time, n_bus_time = False, 0, 5000, 70, 200
 cross, cross_cnt, n_cross_cnt, cross_time, n_cross_time = False, 0, 5000, 50, 200
 left, right, straight, model_num = False, False, False, 0
+
 
 def draw_boxes(image, label, x1,y1,x2,y2):
     # x1, y1, x2, y2 = map(int, box.xyxy[0])
@@ -161,10 +160,10 @@ while running:
                 # print('model',model_num,'is running')
 
                 ## 조향 제어 로직(pid)
-                reference = x - 480
+                reference = x - 475
                 steering_input = steering_control(reference,K_p,K_i,K_d,K_a)
                 car.steering = steering_input 
-                print("throttle: {}".format(th_control))
+                #print("throttle: {}".format(th_control))
                 # #print("Steering_change")
                 # if gain_Tuning: #튜닝 모드로 작동
                 #     car.throttle = 0
@@ -173,27 +172,39 @@ while running:
                 #     car.throttle = th_control
                 #     #print("Driving mode, thro: {:2f} steer input: {} K_p: {} x_error: {} y_axis: {} ".format(th_control, steering_input,K_p,reference,y))
                 
-
+                ## Throttle Control
                 #버스 플래그
                 if bus == True and bus_cnt < bus_time:
                     if abs(steering_input)>=0.7:
-                        car.throttle = th_control-0.03
+                        throttle_txt= th_control-0.028
+                        car.throttle = th_control-0.028
                     else:
-                        car.throttle = th_control - 0.035
+                        throttle_txt = th_control - 0.031
+                        car.throttle = th_control-0.031
                 #횡단보도 플래그
                 elif cross == True and cross_cnt < cross_time:
                     car.throttle = 0
                 #정상 주행
                 elif bus == False and cross == False:
-                    if abs(steering_input)>=0.7:
+                    if abs(steering_input)>=0.65:
+                        throttle_txt = th_control+0.01
                         car.throttle = th_control+0.01
                     else:
-                        car.throttle = th_control   
+                        throttle_txt = th_control
+                        car.throttle = th_control
+                    # elif abs(steering_input)<=0.4 and n_cross_cnt < n_cross_time:
+                    #     throttle_txt = th_control-0.01
+                    #     car.throttle = th_control-0.01
+                    # else:
+                    #     throttle_txt = th_control
+                    #     car.throttle = th_control
                 
-                if sampling==10:
+                ######### YOLOv8 ##########
+                if sampling==9:
                     sampling=0
                     pred = model_yolo(pil_image, stream = False, device = device)
                     class_list = []
+                    box_size_list = []
                     for r in pred:
                         if r.boxes:
                             for box in r.boxes:
@@ -204,28 +215,26 @@ while running:
                                 cls_name = classes[label]
                                 class_list.append(cls_name)
 
+                    box_size = abs(x2-x1)*abs(y2-y1)
 
                     # 버스 표지판을 인지하고, 안본지 오래되었을 때 잠깐 서행
-                    if 'bus' in class_list and bus == False and n_bus_cnt >= n_bus_time:
+                    if 'bus' in class_list and bus == False and n_bus_cnt >= n_bus_time and box_size >= box_size_criterion:
                         bus = True
                         n_bus_cnt = 0
-
+                        
                     # 잠깐 정지
-                    elif 'crosswalk' in class_list and cross == False and n_cross_cnt >= n_cross_time:
+                    elif 'crosswalk' in class_list and cross == False and n_cross_cnt >= n_cross_time and box_size >= box_size_criterion:
                         cross = True
                         n_cross_cnt = 0
 
                     # 모델 변경
-                    if 'left' in class_list:
-                        # left, right, straight = True, False, False
+                    if 'left' in class_list and box_size >= box_size_criterion and box_size < box_size_max_criterion:
                         model = model_left
                         model_num = 1
-                    if 'right' in class_list:
-                        # left, right, straight = False, True, False
+                    if 'right' in class_list and box_size >= box_size_criterion and box_size < box_size_max_criterion:
                         model = model_right
                         model_num = 2
-                    if 'straight' in class_list:
-                        # left, right, straight = False, False, True
+                    if 'straight' in class_list and box_size >= box_size_criterion and box_size < box_size_max_criterion:
                         model = model_straight
                         model_num = 0
                 else:
@@ -234,7 +243,7 @@ while running:
                     ####### 버스 ##########
                     if bus == True and bus_cnt < bus_time:
                         bus_cnt += 1
-                        # print("bus detected",'bus_cnt :',bus_cnt, 'n_bus_cnt:',n_bus_cnt)
+                        print("bus detected",'bus_cnt :',bus_cnt, 'n_bus_cnt:',n_bus_cnt)
                     
                     elif bus_cnt >= bus_time and bus == True:
                         bus = False
@@ -403,7 +412,8 @@ while running:
     
     end_time = time.time() 
     compute_time = end_time - start_time
-
+    box_size = abs(x2-x1)*abs(y2-y1)
+    # print('box size :', box_size)
     # 사진 수집 버튼 인식
     cam_save_path = Path(cam.save_path)
     parent_folder = cam_save_path.name
@@ -413,25 +423,34 @@ while running:
             timestamp = datetime.datetime.now().strftime('%Y%m%d')
             frame_path = cam.save_path / f"{parent_folder}_{cnt}.jpg"
             cnt += 1
-            # # #중앙선 예측 위치 점 찍기
-            # cv2.circle(frame, (int(x),int(y)),10,(255,0,0),-1)
-            # # #사용중인 모델 이름 남기기
-            # font = cv2.FONT_HERSHEY_SIMPLEX
-            # font_scale = 0.5
-            # font_color = (0,255,0)
-            # thickness = 2
-            # line_type = cv2.LINE_8
-            # text_position = (50,50)
-            # # # 모델 변경 확인용 텍스트
-            # text = f"Model : {model_num}, No Bus Sign : {n_bus_cnt}, No Crosswalk Sign : {n_cross_cnt}"
-            # # # 연산시간 확인용 텍스트
-            # # if automode == True: aut = "On"
-            # # else: aut = "Off"
-            # # text = str(f"Computing time:{compute_time*1000 :.3f} ms, Automode :{aut}")
-            # cv2.putText(frame, text, text_position, font, font_scale, font_color, thickness, line_type)
-            # draw_boxes(frame, label, x1, y1, x2, y2)
+            
+            #중앙선 예측 위치 점 찍기
+            cv2.circle(frame, (int(x),int(y)),10,(255,0,0),-1)
+            #사용중인 모델 이름 남기기
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.5
+            font_color = (0,255,0)
+            thickness = 2
+            line_type = cv2.LINE_8
+            text_position = (50,50)
+            # 모델 변경 확인용 텍스트
+            # text = f"Model : {model_num}"
+            # 연산시간 확인용 텍스트
+            if automode == True: aut = "On"
+            else: aut = "Off"
+            text = str(f"Computing time:{compute_time*1000 :.3f} ms, Automode :{aut}")
+            # # 바운딩 박스 확인용 텍스트
+            # if bus == True: bus_text = "detected"
+            # else: bus_text = "not detected"
+            # if cross == True: cross_text = "detected"
+            # else: cross_text = "not detected"
+            # text = f"Bounding box size : {abs(x2-x1)*abs(y2-y1)}, bus : {bus_text}, crosswalk : {cross_text}, model : {model_num} "
+            cv2.putText(frame, text, text_position, font, font_scale, font_color, thickness, line_type)
+            draw_boxes(frame, label, x1, y1, x2, y2)
+            
             cv2.imwrite(str(frame_path), frame)  # 이미지 저장
-            print(f"Saved frame at {timestamp}")
+            # print(f"Saved frame at {timestamp}")
+            
         else:
             print("Failed to capture frame")
     
