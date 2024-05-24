@@ -13,3 +13,5 @@
 -STRAIGHT:'/home/ircv6/HYU-2024-Embedded/jetracer/road_following_model_straight_v4.pth'
 
 -Road Following Model Files: https://drive.google.com/file/d/1g_8oEuTFDXHmiVj67eOxyR-TZwBn221D/view?usp=drive_link
+
+-train_road_center_model_v1.ipynb: This file can modify the pixels of an image, sort names, label images by adding dots, and create a trained model using the YOLO model.
