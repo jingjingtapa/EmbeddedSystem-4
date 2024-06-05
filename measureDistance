@@ -1,0 +1,48 @@
+#define trigPin_1 12 //ultrasonic output
+#define echoPin_1 13 //ultrasonic input
+#define trigPin_2 11 //ultrasonic output
+#define echoPin_2 10 //ultrasonic input
+/* Ultrasonic code */
+#define offsetForZero 13 
+#define delayTime 200
+
+volatile float filterdistance_1=50;
+volatile float filterdistance_2=50;
+volatile float sensitivity_dis=0.6;
+
+float measure_distance(int echoPin,int trigPin){
+  digitalWrite(echoPin,LOW);
+  digitalWrite(trigPin,LOW);
+  delayMicroseconds(5);
+  digitalWrite(trigPin,HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin,LOW);
+
+  unsigned long duration = pulseIn(echoPin,HIGH);
+  float distance = ((float) (340*duration)/10000)/2;
+  return distance;
+//  filterdistance = filterdistance *(1-sensitivity_dis)+distance*sensitivity_dis;
+//
+//  return filterdistance;
+}
+
+
+
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(echoPin_1,INPUT);
+  pinMode(trigPin_1,OUTPUT);
+  pinMode(echoPin_2,INPUT);
+  pinMode(trigPin_2,OUTPUT);
+  Serial.begin(115200);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+   volatile float distance_1 = measure_distance(echoPin_1,trigPin_1);
+   volatile float distance_2 = measure_distance(echoPin_2,trigPin_2);
+   Serial.print("distance1: ");
+   Serial.print(String(distance_1));
+   Serial.print(" distance2: ");
+   Serial.println(String(distance_2));
+}
