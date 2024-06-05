@@ -1,0 +1,70 @@
+#define trigPin_1 12 //ultrasonic output
+#define echoPin_1 13 //ultrasonic input
+#define trigPin_2 11 //ultrasonic output
+#define echoPin_2 10 //ultrasonic input
+
+#define offsetForZero 13 
+#define delayTime 200
+
+volatile float filterdistance_1 = 50;
+volatile float filterdistance_2 = 50;
+volatile float sensitivity_dis = 0.6;
+
+volatile unsigned long pulseStart_1;
+volatile unsigned long pulseEnd_1;
+volatile unsigned long pulseStart_2;
+volatile unsigned long pulseEnd_2;
+
+volatile float distance_1;
+volatile float distance_2;
+
+void echoInterrupt_1() {
+  if (digitalRead(echoPin_1) == HIGH) {
+    pulseStart_1 = micros();
+  } else {
+    pulseEnd_1 = micros();
+    distance_1 = ((float)(pulseEnd_1 - pulseStart_1) * 0.0343) / 2.0; // Speed of sound in air is approximately 343 m/s
+  }
+}
+
+void echoInterrupt_2() {
+  if (digitalRead(echoPin_2) == HIGH) {
+    pulseStart_2 = micros();
+  } else {
+    pulseEnd_2 = micros();
+    distance_2 = ((float)(pulseEnd_2 - pulseStart_2) * 0.0343) / 2.0; // Speed of sound in air is approximately 343 m/s
+  }
+}
+
+void setup() {
+  pinMode(trigPin_1, OUTPUT);
+  pinMode(echoPin_1, INPUT);
+  pinMode(trigPin_2, OUTPUT);
+  pinMode(echoPin_2, INPUT);
+  
+  attachInterrupt(digitalPinToInterrupt(echoPin_1), echoInterrupt_1, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(echoPin_2), echoInterrupt_2, CHANGE);
+  
+  Serial.begin(115200);
+}
+
+void loop() {
+  digitalWrite(trigPin_1, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin_1, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin_1, LOW);
+
+  digitalWrite(trigPin_2, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin_2, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin_2, LOW);
+
+  delay(delayTime); // Add delay between measurements to prevent overlap
+  
+  Serial.print("distance1: ");
+  Serial.print(distance_1);
+  Serial.print(" distance2: ");
+  Serial.println(distance_2);
+}
