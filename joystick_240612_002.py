@@ -627,7 +627,7 @@ while running:
         error_prev=0 
         state=0 #주차 상태 0으로 초기화
         parking_flag=0 #parking 상태 0으로 초기화
-        w,h=0
+        x, y, w, h = 0, 0, 0, 0
         throttle = -joystick.get_axis(1)
         throttle = max(throttle_range[0], min(throttle_range[1], throttle))
         car.throttle = throttle
