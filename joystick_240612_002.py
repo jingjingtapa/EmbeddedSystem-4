@@ -347,7 +347,6 @@ center = False
 test_count=0 
 counter_2_1 = 0
 reference = 0
-w,h=0,0 # 상자 너비, 길이 초기화
 camera2 = False
 
 while running:
@@ -618,7 +617,7 @@ while running:
             elif state ==3:
                 car.throttle = 0
                 car.steering = 0
-                w,h
+                w,h=0
                 automode=False
                 time.sleep(2)
                     
@@ -628,6 +627,7 @@ while running:
         error_prev=0 
         state=0 #주차 상태 0으로 초기화
         parking_flag=0 #parking 상태 0으로 초기화
+        w,h=0
         throttle = -joystick.get_axis(1)
         throttle = max(throttle_range[0], min(throttle_range[1], throttle))
         car.throttle = throttle
